@@ -11,10 +11,10 @@ class CadastrosManager {
         // Pré-carrega os scripts necessários para os modais
         try {
             await this.dashboard.loadModuleScript('js/modules/clientes.js');
-            await this.dashboard.loadModuleScript('js/modules/produtos.js'); // Atualizado
+            await this.dashboard.loadModuleScript('js/modules/produtos-especializado.js'); // CORRIGIDO
             await this.dashboard.loadModuleScript('js/modules/fornecedores.js');
-            await this.dashboard.loadModuleScript('js/modules/receitas.js'); 
-            await this.dashboard.loadModuleScript('js/modules/laboratorio.js'); // Atualizado
+            await this.dashboard.loadModuleScript('js/modules/receitas-avancado.js'); // CORRIGIDO
+            await this.dashboard.loadModuleScript('js/modules/laboratorio-completo.js'); // CORRIGIDO
         } catch (error) {
             console.error("Falha ao pré-carregar scripts de cadastro:", error);
             showError("Erro ao preparar formulários de cadastro.");
@@ -59,8 +59,13 @@ class CadastrosManager {
     // --- FORNECEDOR ---
     showCadastroFornecedor() {
         if (!window.initFornecedores) {
-            showError("Módulo de Fornecedores não carregado.");
-            return;
+            // Tenta inicializar se a função existir (caso o script tenha sido carregado por outra via)
+            if (typeof window.initFornecedores === 'function') {
+                 window.initFornecedores();
+            } else {
+                showError("Módulo de Fornecedores não carregado.");
+                return;
+            }
         }
         if (!window.fornecedoresManager) {
             window.initFornecedores();
@@ -70,14 +75,14 @@ class CadastrosManager {
 
     // --- RECEITA ---
     showCadastroReceita() {
-        if (!window.initReceitas) { 
+        if (!window.initReceitasAvancado) { // CORRIGIDO
             showError("Módulo de Receitas não carregado.");
             return;
         }
-        if (!window.receitasManager) {
-            window.initReceitas();
+        if (!window.receitasAvancadoManager) { // CORRIGIDO
+            window.initReceitasAvancado(); // CORRIGIDO
         }
-        window.receitasManager.showFormReceita();
+        window.receitasAvancadoManager.showFormReceita(); // CORRIGIDO
     }
 
     // --- ORDEM DE SERVIÇO ---

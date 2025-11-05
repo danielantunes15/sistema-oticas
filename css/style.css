@@ -358,3 +358,39 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
+/* ADICIONADO: Estilos de Notificação Toast */
+.toast-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: var(--dark-gray);
+    color: var(--white);
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 2000;
+    transform: translateX(120%);
+    opacity: 0;
+    transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+
+.toast-notification.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.toast-notification.success {
+    background-color: var(--success);
+}
+
+.toast-notification.error {
+    background-color: var(--primary-red);
+}
+
+.toast-notification i {
+    font-size: 1.2rem;
+}

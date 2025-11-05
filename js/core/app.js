@@ -9,26 +9,25 @@ class DashboardManager {
 
         // Mapeamento de módulos ATUALIZADO
         this.moduleConfig = {
-            'dashboard': { html: 'partials/dashboard.html', js: 'js/modules/dashboard.js', init: 'initDashboardModule' },
+            'dashboard': { html: 'partials/dashboard.html', js: 'js/modules/dashboard-module.js', init: 'initDashboardModule' },
             'clientes': { html: 'partials/clientes.html', js: 'js/modules/clientes.js', init: 'initClientes' },
             'vendas': { html: 'partials/vendas.html', js: 'js/modules/vendas.js', init: 'initVendas' },
             'estoque': { html: 'partials/estoque.html', js: 'js/modules/estoque.js', init: 'initEstoque' },
             'financeiro': { html: 'partials/financeiro.html', js: 'js/modules/financeiro.js', init: 'initFinanceiro' },
-            'receitas': { html: 'partials/receitas.html', js: 'js/modules/receitas.js', init: 'initReceitas' },
-            'laboratorio': { html: 'partials/laboratorio.html', js: 'js/modules/laboratorio.js', init: 'initLaboratorioCompleto' }, // Caminho JS atualizado
+            'receitas': { html: 'partials/receitas.html', js: 'js/modules/receitas-avancado.js', init: 'initReceitasAvancado' }, 
+            'laboratorio': { html: 'partials/laboratorio.html', js: 'js/modules/laboratorio-completo.js', init: 'initLaboratorioCompleto' }, 
             'relatorios': { html: 'partials/relatorios.html', js: 'js/modules/relatorios.js', init: 'initRelatorios' },
             
-            'produtos_especializados': { html: 'partials/produtos_especializados.html', js: 'js/modules/produtos.js', init: 'initProdutosEspecializado' }, // Caminho JS atualizado
-            'ordens_servico': { html: 'partials/ordens_servico.html', js: 'js/modules/laboratorio.js', init: 'initLaboratorioCompleto' }, // Reutiliza JS
-            'etapas_os': { html: 'partials/etapas_os.html', js: 'js/modules/laboratorio.js', init: 'initLaboratorioCompleto' }, // Reutiliza JS
+            'produtos_especializados': { html: 'partials/produtos_especializados.html', js: 'js/modules/produtos-especializado.js', init: 'initProdutosEspecializado' }, 
+            'ordens_servico': { html: 'partials/ordens_servico.html', js: 'js/modules/laboratorio-completo.js', init: 'initLaboratorioCompleto' }, 
+            'etapas_os': { html: 'partials/etapas_os.html', js: 'js/modules/laboratorio-completo.js', init: 'initLaboratorioCompleto' }, 
             
             'orcamentos': { html: 'partials/orcamentos.html', js: 'js/modules/orcamentos.js', init: 'initOrcamentos' },
             'cadastros': { html: 'partials/cadastros.html', js: 'js/modules/cadastros.js', init: 'initCadastros' }
             
-            // Adicione aqui outros módulos como 'garantias', 'consultorio' se estiverem no menu
         };
         
-        this.init();
+        // init() será chamado após a instanciação
     }
 
     init() {
@@ -38,9 +37,7 @@ class DashboardManager {
 
     bindEvents() {
         const navItems = document.querySelectorAll('.nav-item');
-        // A lógica do Sidebar (menuToggle) foi movida para js/components/sidebar.js
-        // e não é mais necessária aqui.
-
+        
         navItems.forEach(item => {
             item.addEventListener('click', (e) => {
                 this.handleNavigation(e);
@@ -63,7 +60,6 @@ class DashboardManager {
     async loadModule(moduleName) {
         if (!this.moduleConfig[moduleName]) {
             console.error(`Módulo "${moduleName}" não configurado.`);
-            // Use a função de erro global!
             window.showError(`Módulo "${moduleName}" não encontrado.`);
             return;
         }
@@ -93,14 +89,14 @@ class DashboardManager {
             
         } catch (error) {
             console.error('Erro ao carregar módulo:', error);
-            // Use a função de erro global!
             window.showError(`Erro ao carregar módulo ${moduleName}`);
         }
     }
 
     async fetchModuleHTML(path) {
         try {
-            const response = await fetch(path);
+            // ADICIONADO: Cache buster para forçar o navegador a recarregar
+            const response = await fetch(`${path}?t=${new Date().getTime()}`);
             if (!response.ok) {
                 throw new Error(`Arquivo não encontrado: ${path}`);
             }
@@ -119,7 +115,8 @@ class DashboardManager {
 
         return new Promise((resolve, reject) => {
             const script = document.createElement('script');
-            script.src = path;
+            // ADICIONADO: Cache buster
+            script.src = `${path}?t=${new Date().getTime()}`;
             script.async = true;
             
             script.onload = () => {
@@ -162,8 +159,6 @@ class DashboardManager {
         }
     }
 
-    // REMOVIDO: toggleSidebar() - agora está em js/components/sidebar.js
-
     updatePageTitle(moduleName) {
         // Títulos para o <title> da página
         const titles = {
@@ -192,11 +187,13 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         if (!window.supabaseClient) {
             console.error("Falha ao inicializar o Supabase!");
-            return;
         }
+        
+        // 1. Instancia o DashboardManager
         window.dashboard = new DashboardManager();
+        
+        // 2. CORREÇÃO: Chama o init() para carregar o módulo inicial
+        window.dashboard.init(); 
+
     }, 100);
 });
-
-// REMOVIDO: Funções globais (showSuccess, showError, showModal)
-// Elas agora estão centralizadas em js/components/modal.js

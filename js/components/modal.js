@@ -1,14 +1,36 @@
 // js/components/modal.js - Gerenciador de Modais e Alertas
 
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast-notification ${type}`;
+    
+    const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle';
+    toast.innerHTML = `<i class="fas ${icon}"></i> ${message}`;
+    
+    document.body.appendChild(toast);
+    
+    // Animação de entrada
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 100);
+    
+    // Remover o toast após 3 segundos
+    setTimeout(() => {
+        toast.classList.remove('show');
+        // Remover do DOM após a animação de saída
+        setTimeout(() => {
+            toast.remove();
+        }, 500);
+    }, 3000);
+}
+
 // Funções globais para uso nos módulos
 window.showSuccess = function(message) {
-    // No futuro, isso pode ser substituído por um "Toast"
-    alert('✅ ' + (message || "Operação realizada com sucesso!"));
+    showToast(message || "Operação realizada com sucesso!", 'success');
 };
 
 window.showError = function(message) {
-    // No futuro, isso pode ser substituído por um "Toast"
-    alert('❌ ' + (message || "Ocorreu um erro."));
+    showToast(message || "Ocorreu um erro.", 'error');
 };
 
 window.showModal = function(content) {
