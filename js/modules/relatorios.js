@@ -9,7 +9,7 @@ class RelatoriosManager {
 
     init() {
         this.bindEvents();
-        this.carregarRelatorioVendas();
+        this.gerarRelatorio(); // Carrega o relatório inicial ao invés de só vendas
     }
 
     bindEvents() {
@@ -28,7 +28,7 @@ class RelatoriosManager {
         if (filtroDataFim) filtroDataFim.value = ultimoDiaMes.toISOString().split('T')[0];
     }
 
-    async carregarRelatorioVendas() {
+    async carregarRelatorioCompleto() {
         await Promise.all([
             this.carregarVendasPorPeriodo(),
             this.carregarProdutosMaisVendidos(),
@@ -60,6 +60,7 @@ class RelatoriosManager {
 
         } catch (error) {
             console.error('Erro ao carregar vendas:', error);
+            document.getElementById('vendas-periodo').innerHTML = `<div class="error-message">Erro ao carregar vendas.</div>`;
         }
     }
 
@@ -94,6 +95,11 @@ class RelatoriosManager {
     gerarGraficoVendas(vendas) {
         const ctx = document.getElementById('grafico-vendas');
         if (!ctx) return;
+        
+        // Destruir gráfico antigo, se existir
+        if (window.myLineChart) {
+            window.myLineChart.destroy();
+        }
 
         const vendasPorDia = {};
         vendas?.forEach(venda => {
@@ -105,7 +111,8 @@ class RelatoriosManager {
         const data = Object.values(vendasPorDia);
 
         if (window.Chart) {
-            new Chart(ctx, {
+            // Armazena a instância do gráfico para destruí-la depois
+            window.myLineChart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
@@ -132,13 +139,35 @@ class RelatoriosManager {
 
     async carregarProdutosMaisVendidos() {
         try {
+            const dataInicio = document.getElementById('filtro-data-inicio')?.value;
+            const dataFim = document.getElementById('filtro-data-fim')?.value;
+
+            // Encontra as vendas no período
+            let vendasQuery = this.supabase
+                .from('vendas')
+                .select('id')
+                .eq('status', 'concluida');
+            if (dataInicio) vendasQuery = vendasQuery.gte('created_at', dataInicio);
+            if (dataFim) vendasQuery = vendasQuery.lte('created_at', dataFim + ' 23:59:59');
+            
+            const { data: vendas, error: vendasError } = await vendasQuery;
+            if (vendasError) throw vendasError;
+
+            const vendaIds = vendas.map(v => v.id);
+            if (vendaIds.length === 0) {
+                 this.exibirProdutosMaisVendidos({});
+                 return;
+            }
+
+            // Busca os itens dessas vendas
             const { data: itens, error } = await this.supabase
                 .from('venda_itens')
                 .select(`
                     quantidade,
-                    produtos(nome, preco_venda)
+                    subtotal,
+                    produtos(nome)
                 `)
-                .limit(50);
+                .in('venda_id', vendaIds); // Filtra itens pelo ID das vendas
 
             if (error) throw error;
 
@@ -153,7 +182,7 @@ class RelatoriosManager {
                         };
                     }
                     produtosVendidos[nome].quantidade += item.quantidade;
-                    produtosVendidos[nome].total += (item.quantidade * item.produtos.preco_venda); // Cálculo correto do subtotal
+                    produtosVendidos[nome].total += (item.subtotal || 0); 
                 }
             });
 
@@ -161,6 +190,7 @@ class RelatoriosManager {
 
         } catch (error) {
             console.error('Erro ao carregar produtos vendidos:', error);
+            document.getElementById('produtos-mais-vendidos').innerHTML = `<div class="error-message">Erro ao carregar produtos.</div>`;
         }
     }
 
@@ -171,6 +201,11 @@ class RelatoriosManager {
         const produtosOrdenados = Object.entries(produtos)
             .sort(([, a], [, b]) => b.quantidade - a.quantidade)
             .slice(0, 10);
+            
+        if (produtosOrdenados.length === 0) {
+            container.innerHTML = '<div class="empty-state" style="text-align: center; padding: 20px;">Nenhum produto vendido no período.</div>';
+            return;
+        }
 
         container.innerHTML = `
             <table class="table">
@@ -196,24 +231,38 @@ class RelatoriosManager {
 
     async carregarMetricasFinanceiras() {
         try {
-            const mesAtual = new Date().getMonth() + 1;
-            const anoAtual = new Date().getFullYear();
+            // ==================================================================
+            // CORREÇÃO APLICADA AQUI:
+            // Lógica de data corrigida para usar o último dia do mês dinâmico.
+            // ==================================================================
+            const dataInicioFiltro = document.getElementById('filtro-data-inicio')?.value;
+            const dataFimFiltro = document.getElementById('filtro-data-fim')?.value;
+            
+            if (!dataInicioFiltro || !dataFimFiltro) {
+                 console.warn("Datas de filtro não encontradas para métricas financeiras.");
+                 return;
+            }
 
+            // Receitas do período
             const { data: receitas, error: errorReceitas } = await this.supabase
                 .from('financeiro_movimentacoes')
                 .select('valor')
                 .eq('tipo', 'receita')
                 .eq('status', 'pago')
-                .gte('data_pagamento', `${anoAtual}-${mesAtual.toString().padStart(2, '0')}-01`)
-                .lte('data_pagamento', `${anoAtual}-${mesAtual.toString().padStart(2, '0')}-31`);
+                .gte('data_pagamento', dataInicioFiltro)
+                .lte('data_pagamento', dataFimFiltro);
 
+            // Despesas do período
             const { data: despesas, error: errorDespesas } = await this.supabase
                 .from('financeiro_movimentacoes')
                 .select('valor')
                 .eq('tipo', 'despesa')
                 .eq('status', 'pago')
-                .gte('data_pagamento', `${anoAtual}-${mesAtual.toString().padStart(2, '0')}-01`)
-                .lte('data_pagamento', `${anoAtual}-${mesAtual.toString().padStart(2, '0')}-31`);
+                .gte('data_pagamento', dataInicioFiltro)
+                .lte('data_pagamento', dataFimFiltro);
+
+            if (errorReceitas) throw errorReceitas;
+            if (errorDespesas) throw errorDespesas;
 
             const totalReceitas = receitas?.reduce((sum, item) => sum + item.valor, 0) || 0;
             const totalDespesas = despesas?.reduce((sum, item) => sum + item.valor, 0) || 0;
@@ -229,6 +278,7 @@ class RelatoriosManager {
 
         } catch (error) {
             console.error('Erro ao carregar métricas financeiras:', error);
+            document.getElementById('metricas-financeiras').innerHTML = `<div class="error-message">Erro ao carregar métricas.</div>`;
         }
     }
 
@@ -263,8 +313,8 @@ class RelatoriosManager {
     }
 
     async gerarRelatorio() {
-        await this.carregarRelatorioVendas();
-        showSuccess('Relatório atualizado com sucesso!'); // Usa global
+        showSuccess('Gerando relatório...'); // Usa global
+        await this.carregarRelatorioCompleto();
     }
 
     // REMOVIDO: showSuccess

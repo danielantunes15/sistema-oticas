@@ -26,17 +26,13 @@ class FinanceiroManager {
 
     async loadMovimentacoes() {
         try {
-            // ==================================================================
-            // CORREÇÃO APLICADA AQUI:
-            // Removida a linha ", clientes(nome)" que estava causando o erro,
-            // pois não há relação direta entre 'financeiro_movimentacoes' e 'clientes'.
-            // ==================================================================
+            // CORREÇÃO 1: Removido "clientes(nome)"
             const { data: movimentacoes, error } = await this.supabase
                 .from('financeiro_movimentacoes')
                 .select(`
                     id, descricao, tipo, categoria, valor, data_vencimento, data_pagamento, status,
-                    vendas ( numero_venda )
-                `) // A linha "clientes(nome)" foi removida daqui.
+                    vendas(numero_venda)
+                `)
                 .order('data_vencimento', { ascending: true })
                 .limit(100);
 
@@ -106,7 +102,7 @@ class FinanceiroManager {
             const mesAtual = hoje.getMonth() + 1; // 1-12
             const anoAtual = hoje.getFullYear();
             
-            // Pega o último dia do mês atual (ex: 30 para Nov, 31 para Dez)
+            // CORREÇÃO 2: Lógica de data dinâmica
             const ultimoDiaDoMes = new Date(anoAtual, mesAtual, 0).getDate(); 
 
             const dataInicioStr = `${anoAtual}-${mesAtual.toString().padStart(2, '0')}-01`;
@@ -119,7 +115,7 @@ class FinanceiroManager {
                 .eq('tipo', 'receita')
                 .eq('status', 'pago')
                 .gte('data_pagamento', dataInicioStr)
-                .lte('data_pagamento', dataFimStr);
+                .lte('data_pagamento', dataFimStr); 
 
             // Despesas do mês
             const { data: despesas, error: errorDespesas } = await this.supabase
@@ -175,7 +171,7 @@ class FinanceiroManager {
             'total-despesas': `R$ ${resumo.totalDespesas.toFixed(2)}`,
             'saldo-mes': `R$ ${resumo.saldoMes.toFixed(2)}`,
             'contas-receber': `R$ ${resumo.totalContasReceber.toFixed(2)}`,
-            'contas-pagar': `R$ ${resumo.totalContasPagar.toFixed(2)}` // Assumindo que você tenha um id 'contas-pagar'
+            'contas-pagar': `R$ ${resumo.totalContasPagar.toFixed(2)}`
         };
 
         Object.entries(elements).forEach(([id, value]) => {

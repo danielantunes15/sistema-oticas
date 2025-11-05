@@ -19,13 +19,16 @@ class ReceitasAvancadoManager {
     }
 
     bindEvents() {
-        // REMOVIDO: setTimeout (se você ainda não o fez)
-        const btnNovaReceita = document.getElementById('btn-nova-receita'); // Assumindo que o ID em receitas.html é 'btn-nova-receita'
-        const btnImportarAparelho = document.getElementById('btn-importar-aparelho');
-        const btnGerarReceita = document.getElementById('btn-gerar-receita');
+        const btnNovaReceita = document.getElementById('btn-nova-receita');
+        const btnImportarAparelho = document.getElementById('btn-importar-aparelho'); // Este ID não parece existir no seu HTML
+        const btnGerarReceita = document.getElementById('btn-gerar-receita'); // Este ID não parece existir no seu HTML
+        const filtroCliente = document.getElementById('filtro-cliente');
 
-        // Corrigindo para os IDs no partial/receitas.html
+
         if (btnNovaReceita) btnNovaReceita.addEventListener('click', () => this.showFormReceita());
+        if (filtroCliente) filtroCliente.addEventListener('change', (e) => this.filtrarReceitas(e.target.value));
+        
+        // IDs que não estão no HTML (opcional manter)
         if (btnImportarAparelho) btnImportarAparelho.addEventListener('click', () => this.importarDadosAparelho());
         if (btnGerarReceita) btnGerarReceita.addEventListener('click', () => this.gerarReceitaAutomatica());
     }
@@ -55,7 +58,6 @@ class ReceitasAvancadoManager {
     }
 
     renderReceitasTable(receitas) {
-        // Corrigindo para o ID no partial/receitas.html
         const tbody = document.getElementById('receitas-table-body');
         if (!tbody) return;
 
@@ -319,6 +321,33 @@ class ReceitasAvancadoManager {
 
         } catch (error) {
             console.error('Erro ao carregar clientes:', error);
+        }
+    }
+    
+    // Adicionado: Filtro de receitas pelo select
+    async filtrarReceitas(clienteId) {
+        if (clienteId === 'todos') {
+            this.loadReceitas();
+            return;
+        }
+        
+        try {
+            const { data: receitas, error } = await this.supabase
+                .from('receitas')
+                .select(`
+                    *,
+                    clientes(nome, data_nascimento)
+                `)
+                .eq('cliente_id', clienteId) // Filtra pelo cliente
+                .order('created_at', { ascending: false })
+                .limit(100);
+
+            if (error) throw error;
+            this.renderReceitasTable(receitas);
+
+        } catch (error) {
+            console.error('Erro ao filtrar receitas:', error);
+            showError('Erro ao filtrar receitas: ' + error.message);
         }
     }
 
