@@ -26,10 +26,11 @@ class FinanceiroManager {
 
     async loadMovimentacoes() {
         try {
+            // CORREÇÃO 1: Trocado o "*" por colunas explícitas para evitar ambiguidade
             const { data: movimentacoes, error } = await this.supabase
                 .from('financeiro_movimentacoes')
                 .select(`
-                    *,
+                    id, descricao, tipo, categoria, valor, data_vencimento, data_pagamento, status,
                     vendas(numero_venda),
                     clientes(nome)
                 `)
@@ -98,9 +99,15 @@ class FinanceiroManager {
 
     async loadResumoFinanceiro() {
         try {
-            const hoje = new Date().toISOString().split('T')[0];
-            const mesAtual = new Date().getMonth() + 1;
-            const anoAtual = new Date().getFullYear();
+            const hoje = new Date();
+            const mesAtual = hoje.getMonth() + 1; // 1-12
+            const anoAtual = hoje.getFullYear();
+            
+            // CORREÇÃO 2: Calcula dinamicamente o último dia do mês
+            const ultimoDiaDoMes = new Date(anoAtual, mesAtual, 0).getDate(); // Pega o último dia (ex: 30 para Nov)
+
+            const dataInicioStr = `${anoAtual}-${mesAtual.toString().padStart(2, '0')}-01`;
+            const dataFimStr = `${anoAtual}-${mesAtual.toString().padStart(2, '0')}-${ultimoDiaDoMes.toString().padStart(2, '0')}`;
 
             // Receitas do mês
             const { data: receitas, error: errorReceitas } = await this.supabase
@@ -108,8 +115,8 @@ class FinanceiroManager {
                 .select('valor')
                 .eq('tipo', 'receita')
                 .eq('status', 'pago')
-                .gte('data_pagamento', `${anoAtual}-${mesAtual.toString().padStart(2, '0')}-01`)
-                .lte('data_pagamento', `${anoAtual}-${mesAtual.toString().padStart(2, '0')}-31`);
+                .gte('data_pagamento', dataInicioStr)
+                .lte('data_pagamento', dataFimStr); // Corrigido
 
             // Despesas do mês
             const { data: despesas, error: errorDespesas } = await this.supabase
@@ -117,8 +124,8 @@ class FinanceiroManager {
                 .select('valor')
                 .eq('tipo', 'despesa')
                 .eq('status', 'pago')
-                .gte('data_pagamento', `${anoAtual}-${mesAtual.toString().padStart(2, '0')}-01`)
-                .lte('data_pagamento', `${anoAtual}-${mesAtual.toString().padStart(2, '0')}-31`);
+                .gte('data_pagamento', dataInicioStr)
+                .lte('data_pagamento', dataFimStr); // Corrigido
 
             // Contas a receber
             const { data: contasReceber, error: errorReceber } = await this.supabase
@@ -126,7 +133,7 @@ class FinanceiroManager {
                 .select('valor')
                 .eq('tipo', 'receita')
                 .eq('status', 'pendente')
-                .gte('data_vencimento', hoje);
+                .gte('data_vencimento', hoje.toISOString().split('T')[0]);
 
             // Contas a pagar
             const { data: contasPagar, error: errorPagar } = await this.supabase
@@ -134,7 +141,12 @@ class FinanceiroManager {
                 .select('valor')
                 .eq('tipo', 'despesa')
                 .eq('status', 'pendente')
-                .gte('data_vencimento', hoje);
+                .gte('data_vencimento', hoje.toISOString().split('T')[0]);
+
+            // Tratar erros individuais se necessário (ex: if (errorReceitas) throw errorReceitas;)
+            if (errorReceitas || errorDespesas || errorReceber || errorPagar) {
+                 console.error("Erro em uma das consultas do resumo:", { errorReceitas, errorDespesas, errorReceber, errorPagar });
+            }
 
             const totalReceitas = receitas?.reduce((sum, item) => sum + item.valor, 0) || 0;
             const totalDespesas = despesas?.reduce((sum, item) => sum + item.valor, 0) || 0;
@@ -161,7 +173,7 @@ class FinanceiroManager {
             'total-despesas': `R$ ${resumo.totalDespesas.toFixed(2)}`,
             'saldo-mes': `R$ ${resumo.saldoMes.toFixed(2)}`,
             'contas-receber': `R$ ${resumo.totalContasReceber.toFixed(2)}`,
-            'contas-pagar': `R$ ${resumo.totalContasPagar.toFixed(2)}`
+            'contas-pagar': `R$ ${resumo.totalContasPagar.toFixed(2)}` // Assumindo que você tenha um id 'contas-pagar'
         };
 
         Object.entries(elements).forEach(([id, value]) => {
@@ -252,6 +264,15 @@ class FinanceiroManager {
             observacoes: document.getElementById('movimentacao-observacoes').value,
             status: 'pendente'
         };
+        
+        // Se a data de vencimento não for preenchida, o status não deve ser 'pendente' se for uma entrada/saída imediata.
+        // Vamos ajustar: Se não houver data de vencimento, será 'pago' hoje.
+        if (!movimentacaoData.data_vencimento) {
+            movimentacaoData.status = 'pago';
+            movimentacaoData.data_pagamento = new Date().toISOString().split('T')[0];
+            movimentacaoData.data_vencimento = new Date().toISOString().split('T')[0];
+        }
+
 
         const movimentacaoId = document.getElementById('movimentacao-id').value;
 
@@ -327,6 +348,28 @@ class FinanceiroManager {
         const status = document.getElementById('filtro-status')?.value;
         
         console.log('Filtrando por:', { tipo, status });
+        // Lógica de filtro no lado do cliente (ou recarregar do Supabase com filtros)
+        const tbody = document.getElementById('financeiro-table-body');
+        if (!tbody) return;
+        
+        const rows = tbody.querySelectorAll('tr');
+        rows.forEach(row => {
+            const rowTipoElement = row.querySelector('.movimentacao-tipo');
+            const rowStatusElement = row.querySelector('.status-badge');
+            if (!rowTipoElement || !rowStatusElement) return; // Ignora cabeçalho ou linhas vazias
+
+            const rowTipo = rowTipoElement.classList.contains('receita') ? 'receita' : 'despesa';
+            const rowStatus = rowStatusElement.textContent.trim().toLowerCase().replace('ç', 'c'); // 'Pago', 'Pendente', 'Vencido'
+
+            const matchTipo = (tipo === 'todos') || (tipo === rowTipo);
+            const matchStatus = (status === 'todos') || (status === 'pago' && rowStatus === 'pago') || (status === 'pendente' && rowStatus === 'pendente') || (status === 'vencido' && rowStatus === 'vencido');
+
+            if (matchTipo && matchStatus) {
+                row.style.display = ''; // 'table-row'
+            } else {
+                row.style.display = 'none';
+            }
+        });
     }
 
     getStatusText(status) {
