@@ -19,25 +19,28 @@ class ReceitasAvancadoManager {
     }
 
     bindEvents() {
-        setTimeout(() => {
-            const btnNovaReceita = document.getElementById('btn-nova-receita-avancada');
-            const btnImportarAparelho = document.getElementById('btn-importar-aparelho');
-            const btnGerarReceita = document.getElementById('btn-gerar-receita');
+        // REMOVIDO: setTimeout (se você ainda não o fez)
+        const btnNovaReceita = document.getElementById('btn-nova-receita'); // Assumindo que o ID em receitas.html é 'btn-nova-receita'
+        const btnImportarAparelho = document.getElementById('btn-importar-aparelho');
+        const btnGerarReceita = document.getElementById('btn-gerar-receita');
 
-            if (btnNovaReceita) btnNovaReceita.addEventListener('click', () => this.showFormReceita());
-            if (btnImportarAparelho) btnImportarAparelho.addEventListener('click', () => this.importarDadosAparelho());
-            if (btnGerarReceita) btnGerarReceita.addEventListener('click', () => this.gerarReceitaAutomatica());
-        }, 100);
+        // Corrigindo para os IDs no partial/receitas.html
+        if (btnNovaReceita) btnNovaReceita.addEventListener('click', () => this.showFormReceita());
+        if (btnImportarAparelho) btnImportarAparelho.addEventListener('click', () => this.importarDadosAparelho());
+        if (btnGerarReceita) btnGerarReceita.addEventListener('click', () => this.gerarReceitaAutomatica());
     }
 
     async loadReceitas() {
         try {
+            // ==================================================================
+            // CORREÇÃO APLICADA AQUI:
+            // Removida a linha ", vendas(numero_venda)" que estava causando o erro.
+            // ==================================================================
             const { data: receitas, error } = await this.supabase
                 .from('receitas')
                 .select(`
                     *,
-                    clientes(nome, data_nascimento),
-                    vendas(numero_venda)
+                    clientes(nome, data_nascimento)
                 `)
                 .order('created_at', { ascending: false })
                 .limit(100);
@@ -52,7 +55,8 @@ class ReceitasAvancadoManager {
     }
 
     renderReceitasTable(receitas) {
-        const tbody = document.getElementById('receitas-avancadas-body');
+        // Corrigindo para o ID no partial/receitas.html
+        const tbody = document.getElementById('receitas-table-body');
         if (!tbody) return;
 
         if (receitas && receitas.length > 0) {
@@ -76,11 +80,12 @@ class ReceitasAvancadoManager {
                             ${receita.oe_adicao ? `Add: ${receita.oe_adicao}` : ''}
                         </div>
                     </td>
+                    <td>${receita.medico_nome || '-'}</td>
                     <td>
                         ${receita.data_validade ? new Date(receita.data_validade).toLocaleDateString('pt-BR') : '-'}
                         ${this.isReceitaVencida(receita.data_validade) ? 
-                          '<span class="vencida-badge">Vencida</span>' : 
-                          '<span class="valida-badge">Válida</span>'}
+                          '<span class="vencida-badge" style="color: red; font-size: 0.8em; margin-left: 5px;">Vencida</span>' : 
+                          '<span class="valida-badge" style="color: green; font-size: 0.8em; margin-left: 5px;">Válida</span>'}
                     </td>
                     <td>
                         <div class="btn-group">
@@ -103,7 +108,7 @@ class ReceitasAvancadoManager {
         } else {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="4" class="text-center">Nenhuma receita cadastrada</td>
+                    <td colspan="5" class="text-center">Nenhuma receita cadastrada</td>
                 </tr>
             `;
         }
@@ -119,7 +124,6 @@ class ReceitasAvancadoManager {
                 <form id="form-receita-avancada">
                     <input type="hidden" id="receita-id" value="${receita?.id || ''}">
                     
-                    <!-- Dados do Paciente -->
                     <div class="form-section">
                         <h4>👤 Dados do Paciente</h4>
                         <div class="form-row">
@@ -153,7 +157,6 @@ class ReceitasAvancadoManager {
                         </div>
                     </div>
 
-                    <!-- Dados do Médico -->
                     <div class="form-section">
                         <h4>👨‍⚕️ Dados do Médico</h4>
                         <div class="form-row">
@@ -179,7 +182,6 @@ class ReceitasAvancadoManager {
                         </div>
                     </div>
 
-                    <!-- Prescrição OD -->
                     <div class="form-section">
                         <h4>👁️ Olho Direito (OD)</h4>
                         <div class="form-row">
@@ -213,7 +215,6 @@ class ReceitasAvancadoManager {
                         </div>
                     </div>
 
-                    <!-- Prescrição OE -->
                     <div class="form-section">
                         <h4>👁️ Olho Esquerdo (OE)</h4>
                         <div class="form-row">
@@ -247,7 +248,6 @@ class ReceitasAvancadoManager {
                         </div>
                     </div>
 
-                    <!-- Lentes Indicadas -->
                     <div class="form-section">
                         <h4>🔍 Lentes Indicadas</h4>
                         <div class="form-row">
@@ -274,7 +274,6 @@ class ReceitasAvancadoManager {
                         </div>
                     </div>
 
-                    <!-- Observações -->
                     <div class="form-section">
                         <h4>📝 Observações</h4>
                         <div class="form-group">
@@ -306,6 +305,17 @@ class ReceitasAvancadoManager {
 
             if (error) throw error;
             this.clientes = clientes;
+            
+            // Popula o filtro da tela principal (paralelo ao do modal)
+            const filtroClienteSelect = document.getElementById('filtro-cliente');
+            if (filtroClienteSelect) {
+                 filtroClienteSelect.innerHTML = `
+                    <option value="todos">Todos os Clientes</option>
+                    ${clientes.map(cliente => `
+                        <option value="${cliente.id}">${cliente.nome}</option>
+                    `).join('')}
+                 `;
+            }
 
         } catch (error) {
             console.error('Erro ao carregar clientes:', error);
@@ -440,13 +450,11 @@ class ReceitasAvancadoManager {
                 </div>
                 <div class="modal-body">
                     <div class="receita-completa">
-                        <!-- Cabeçalho -->
                         <div class="receita-header">
                             <h4>Óticas Avelar</h4>
                             <p>Receita Oftalmológica</p>
                         </div>
 
-                        <!-- Dados Paciente -->
                         <div class="receita-section">
                             <h5>Dados do Paciente</h5>
                             <div class="detalhes-grid">
@@ -465,7 +473,6 @@ class ReceitasAvancadoManager {
                             </div>
                         </div>
 
-                        <!-- Prescrição -->
                         <div class="receita-section">
                             <h5>Prescrição Oftalmológica</h5>
                             <div class="prescricao-grid">
@@ -492,7 +499,6 @@ class ReceitasAvancadoManager {
                             </div>
                         </div>
 
-                        <!-- Lentes Indicadas -->
                         ${receita.tipo_lente ? `
                         <div class="receita-section">
                             <h5>Lentes Indicadas</h5>
@@ -511,7 +517,6 @@ class ReceitasAvancadoManager {
                         </div>
                         ` : ''}
 
-                        <!-- Observações -->
                         ${receita.observacoes ? `
                         <div class="receita-section">
                             <h5>Observações</h5>
@@ -519,7 +524,6 @@ class ReceitasAvancadoManager {
                         </div>
                         ` : ''}
 
-                        <!-- Rodapé -->
                         <div class="receita-footer">
                             <div class="medico-info">
                                 <p><strong>Médico:</strong> ${receita.medico_nome || 'Não informado'}</p>
