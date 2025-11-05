@@ -1,0 +1,60 @@
+<div class="module-header">
+    <h2><i class="fas fa-life-ring"></i> Central de Ajuda</h2>
+    <p>Precisa de ajuda? Abra um chamado de suporte técnico.</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>Abrir Novo Chamado</h3>
+    </div>
+    <div class="card-body">
+        <form id="form-chamado-suporte">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="chamado-nome">Seu Nome *</label>
+                    <input type="text" id="chamado-nome" required>
+                </div>
+                <div class="form-group">
+                    <label for="chamado-email">Seu E-mail (para contato)</label>
+                    <input type="email" id="chamado-email">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="chamado-modulo">Módulo com Problema *</label>
+                    <select id="chamado-modulo" required>
+                        <option value="">Selecione um módulo...</option>
+                        <option value="dashboard">Dashboard</option>
+                        <option value="clientes">Clientes</option>
+                        <option value="vendas">Vendas</option>
+                        <option value="estoque">Estoque</option>
+                        <option value="financeiro">Financeiro</option>
+                        <option value="receitas">Receitas</option>
+                        <option value="laboratorio">Laboratório</option>
+                        <option value="produtos">Produtos</option>
+                        <option value="orcamentos">Orçamentos</option>
+                        <option value="cadastros">Cadastros</option>
+                        <option value="relatorios">Relatórios</option>
+                        <option value="outro">Outro</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="chamado-prioridade">Prioridade *</label>
+                    <select id="chamado-prioridade" required>
+                        <option value="baixa">Baixa</option>
+                        <option value="media">Média</option>
+                        <option value="alta">Alta (Urgente)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="chamado-descricao">Descreva o Problema *</label>
+                <textarea id="chamado-descricao" rows="6" required placeholder="Por favor, detalhe o que aconteceu, o que você esperava que acontecesse e, se possível, os passos para reproduzir o erro."></textarea>
+            </div>
+            
+            <button type="submit" class="btn btn-primary" id="btn-enviar-chamado" style="margin-top: 15px;">
+                <i class="fas fa-paper-plane"></i> Enviar Chamado
+            </button>
+        </form>
+    </div>
+</div>

@@ -23,8 +23,10 @@ class DashboardManager {
             'etapas_os': { html: 'partials/etapas_os.html', js: 'js/modules/laboratorio-completo.js', init: 'initLaboratorioCompleto' }, 
             
             'orcamentos': { html: 'partials/orcamentos.html', js: 'js/modules/orcamentos.js', init: 'initOrcamentos' },
-            'cadastros': { html: 'partials/cadastros.html', js: 'js/modules/cadastros.js', init: 'initCadastros' }
-            
+            'cadastros': { html: 'partials/cadastros.html', js: 'js/modules/cadastros.js', init: 'initCadastros' },
+
+            // NOVA ROTA ADICIONADA:
+            'ajuda': { html: 'partials/ajuda.html', js: 'js/modules/ajuda.js', init: 'initAjuda' }
         };
         
         // init() será chamado após a instanciação
@@ -80,7 +82,12 @@ class DashboardManager {
 
             // 3. Inicializar o módulo (chama a função init...() específica)
             if (config.init && typeof window[config.init] === 'function') {
-                window[config.init]();
+                // Previne re-inicialização desnecessária se o manager já existir
+                if (config.init === 'initAjuda' && window.ajudaManager) {
+                   // O manager de ajuda já se auto-inicializa no construtor
+                } else {
+                   window[config.init]();
+                }
             } else if (config.js) {
                 console.warn(`Função de inicialização ${config.init} não encontrada para ${moduleName}.`);
             }
@@ -174,7 +181,8 @@ class DashboardManager {
             'etapas_os': 'Etapas O.S.',
             'orcamentos': 'Orçamentos',
             'cadastros': 'Cadastros',
-            'relatorios': 'Relatórios'
+            'relatorios': 'Relatórios',
+            'ajuda': 'Central de Ajuda' // Título para a nova página
         };
         const title = titles[moduleName] || moduleName.charAt(0).toUpperCase() + moduleName.slice(1);
         document.title = `${title} - Óticas Avelar`;
@@ -192,7 +200,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // 1. Instancia o DashboardManager
         window.dashboard = new DashboardManager();
         
-        // 2. CORREÇÃO: Chama o init() para carregar o módulo inicial
+        // 2. Chama o init() para carregar o módulo inicial
         window.dashboard.init(); 
 
     }, 100);
